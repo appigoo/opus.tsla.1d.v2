@@ -1493,9 +1493,7 @@ with col_btn2:
 
 with col_status:
     if st.session_state["app_running"]:
-        _elapsed = time.time() - st.session_state["last_refresh"]
-        _remaining = max(0, REFRESH_INTERVAL - int(_elapsed))
-        st.success(f"🟢 監控運行中　｜　下次刷新：**{_remaining}** 秒後", icon="📡")
+        st.success(f"🟢 監控運行中　｜　每 **{REFRESH_INTERVAL}** 秒自動刷新", icon="📡")
     else:
         st.warning("⏸️ 已停止，調好參數後按啟動", icon="⚙️")
 
@@ -2731,12 +2729,37 @@ with tabs[-1]:
     pass
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  AUTO REFRESH
+#  AUTO REFRESH（使用 @st.fragment 實現非阻塞自動刷新）
 # ═════════════════════════════════════════════════════════════════════════════
 st.divider()
 
-if st.session_state["app_running"]:
-    _elapsed = time.time() - st.session_state["last_refresh"]
-    if _elapsed >= REFRESH_INTERVAL:
-        st.session_state["last_refresh"] = time.time()
-        st.rerun()
+
+@st.fragment
+def _auto_refresh_fragment():
+    """
+    獨立 fragment：在背景 sleep 後觸發整頁 rerun。
+
+    為什麼原來的方式不工作：
+    - Streamlit 腳本執行完畢後進入「等待用戶操作」狀態
+    - 沒有 sleep/timer，腳本不會自己再次執行
+    - 必須有一個「活著的」元素去觸發 rerun
+
+    @st.fragment 解法：
+    - fragment 是獨立於主腳本的可重新執行區塊
+    - time.sleep() 在 fragment 中不會凍結整個頁面
+    - sleep 結束後呼叫 st.rerun() 刷新整頁
+    """
+    if not st.session_state.get("app_running", False):
+        st.caption("⏸️ 監控已停止，自動刷新暫停")
+        return
+
+    _remaining = max(1, REFRESH_INTERVAL)
+    st.caption(f"⏳ 下次自動刷新：{_remaining} 秒後…")
+
+    time.sleep(_remaining)
+
+    st.session_state["last_refresh"] = time.time()
+    st.rerun()
+
+
+_auto_refresh_fragment()
