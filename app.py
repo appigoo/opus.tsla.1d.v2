@@ -2335,14 +2335,14 @@ for tab_idx, ticker in enumerate(selected_tickers):
                 if not _tg_already_sent(_dedup_key_sig, "breakout_high"):
                     _bo_msg = (
                         f"🚀 突破新高提醒\n股票：{ticker} ({selected_interval})\n"
-                        f"現價 ${data['High'].iloc[-1]:.2f} 創 {W} 根K線新高\n"
+                        f"現價 ${data['High'].iloc[-1]:.2f} 創 {int(MFI_WIN)} 根K線新高\n"
                         f"成交量：{_fmt_vol(data['Volume'].iloc[-1])}  ({_cur_vol})\n方向：🟢 做多（買入）"
                     )
                     if _tg_on_bo:
                         _ok, _err = send_telegram_alert(_bo_msg, ticker=ticker)
                         if _ok:
                             _tg_mark_sent(_dedup_key_sig, "breakout_high")
-                            st.toast(f"🚀 {ticker} 破 {W}K 新高，Telegram 已推送", icon="🚀")
+                            st.toast(f"🚀 {ticker} 破 {int(MFI_WIN)}K 新高，Telegram 已推送", icon="🚀")
                     else:
                         _tg_mark_sent(_dedup_key_sig, "breakout_high")
 
@@ -2350,14 +2350,14 @@ for tab_idx, ticker in enumerate(selected_tickers):
                 if not _tg_already_sent(_dedup_key_sig, "breakdown_low"):
                     _bd_msg = (
                         f"🔻 跌破新低提醒\n股票：{ticker} ({selected_interval})\n"
-                        f"現價 ${data['Low'].iloc[-1]:.2f} 創 {W} 根K線新低\n"
+                        f"現價 ${data['Low'].iloc[-1]:.2f} 創 {int(MFI_WIN)} 根K線新低\n"
                         f"成交量：{_fmt_vol(data['Volume'].iloc[-1])}  ({_cur_vol})\n方向：🔴 做空（賣出）"
                     )
                     if _tg_on_bo:
                         _ok, _err = send_telegram_alert(_bd_msg, ticker=ticker)
                         if _ok:
                             _tg_mark_sent(_dedup_key_sig, "breakdown_low")
-                            st.toast(f"🔻 {ticker} 穿 {W}K 新低，Telegram 已推送", icon="🔻")
+                            st.toast(f"🔻 {ticker} 穿 {int(MFI_WIN)}K 新低，Telegram 已推送", icon="🔻")
                     else:
                         _tg_mark_sent(_dedup_key_sig, "breakdown_low")
 
