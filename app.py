@@ -2091,7 +2091,7 @@ for tab_idx, ticker in enumerate(selected_tickers):
             _dedup_key_cond = f"tg_cond_sent_{ticker}_{str(data['Datetime'].iloc[-1])[:19]}"
 
             # ── 信號 → 方向查找表 ──────────────────────────────────────────
-            _live_tg_p1 = st.session_state.get(_ss_key(ticker), _tk_conds)
+            _live_tg_p1 = _tk_conds
             _sig_dir_map: dict = {}
             for _, _p1_row in _live_tg_p1.iterrows():
                 _p1_marks = str(_p1_row.get("異動標記", ""))
@@ -2161,7 +2161,9 @@ for tab_idx, ticker in enumerate(selected_tickers):
                     st.caption("1️⃣ **第一個匹配模式**：從排名第 1 行開始比對，找到第一個符合的條件就觸發並停止。")
 
             _scan_all  = (st.session_state["tg_match_mode"] == "all")
-            _live_tg   = st.session_state.get(_ss_key(ticker), _tk_conds)
+            # 直接使用 _tk_conds（來自 _tg_editor 的最新輸出），而非重新讀取 session_state
+            # 確保比對邏輯與 UI 上顯示的條件表完全一致
+            _live_tg   = _tk_conds
             _cur_vol   = _safe_str(data["成交量標記"].iloc[-1])
             _cur_kline = _safe_str(data["K線形態"].iloc[-1])
 
@@ -2175,7 +2177,8 @@ for tab_idx, ticker in enumerate(selected_tickers):
             _rsi_icon = "🔥" if _rsi_val > 70 else ("🧊" if _rsi_val < 30 else "⚪")
             _vol_icon = "📈" if _cur_vol == "放量" else "📉"
 
-            def _build_tg_msg(rank, backtest_wr, match_no, total_matches, direction="做多"):
+            def _build_tg_msg(rank, backtest_wr, match_no, total_matches,
+                             direction="做多", matched_signals=""):
                 _header = (
                     f"{'='*28}\n"
                     f"🚨 Telegram 觸發條件匹配"
@@ -2205,20 +2208,23 @@ for tab_idx, ticker in enumerate(selected_tickers):
                     f"VIX       : {_vix_str}",
                     f"密集區    : {_near_str}",
                     "",
-                    "--- 觸發信號 ---",
+                    "--- 匹配條件 ---",
+                    f"條件排名  : #{rank}",
+                    f"回測勝率  : {backtest_wr}",
+                    f"方向      : {_dir_label}",
+                ]
+                # 顯示匹配到的條件表信號（不是全部 K_list）
+                if matched_signals:
+                    _lines.append(f"條件信號  : {matched_signals}")
+                _lines += [
+                    "",
+                    "--- 當前K線全部信號 ---",
                 ]
                 for _s in K_list[:12]:
                     _lines.append(f"  {_s}")
                 if len(K_list) > 12:
                     _lines.append(f"  ... 共 {len(K_list)} 個信號")
-                _lines += [
-                    "",
-                    "--- 匹配條件 ---",
-                    f"條件排名  : #{rank}",
-                    f"回測勝率  : {backtest_wr}",
-                    f"方向      : {_dir_label}",
-                    f"{'='*28}",
-                ]
+                _lines.append(f"{'='*28}")
                 return "\n".join(_lines)
 
             # ── 核心比對迴圈 ──────────────────────────────────────────────
@@ -2245,7 +2251,7 @@ for tab_idx, ticker in enumerate(selected_tickers):
                     _wr       = _wr_raw if _wr_raw else "N/A"
                     _dir_raw  = _safe_str(cond_row.get("方向", ""))
                     _dir      = _dir_raw if _dir_raw in ("做多", "做空") else ""
-                    _matched_list.append((_rank, _wr, _ci, _dir))
+                    _matched_list.append((_rank, _wr, _ci, _dir, _raw_marks))
 
                     if not _scan_all:
                         break
@@ -2255,7 +2261,7 @@ for tab_idx, ticker in enumerate(selected_tickers):
             if _total_matched > 0:
                 # UI 摘要
                 if _total_matched == 1:
-                    _rank0, _wr0, _, _dir0 = _matched_list[0]
+                    _rank0, _wr0, _, _dir0, _sigs0 = _matched_list[0]
                     _dir0_label = ("🟢 做多" if _dir0 == "做多"
                                    else "🔴 做空" if _dir0 == "做空"
                                    else "未設定")
@@ -2264,7 +2270,7 @@ for tab_idx, ticker in enumerate(selected_tickers):
                         f"信號：{K_str[:120]}\n成交量：{_cur_vol}  K線：{_cur_kline}",
                     )
                 else:
-                    _ranks_str = "、".join(r for r, _, __, ___ in _matched_list)
+                    _ranks_str = "、".join(r for r, _, __, ___, ____ in _matched_list)
                     st.info(
                         f"🎯 **共匹配 {_total_matched} 條條件！** 排名：{_ranks_str}\n\n"
                         f"信號：{K_str[:120]}\n成交量：{_cur_vol}  K線：{_cur_kline}",
@@ -2276,13 +2282,13 @@ for tab_idx, ticker in enumerate(selected_tickers):
                 _send_err_msgs  = []
 
                 if not _tg_on:
-                    _ranks_muted = "、".join(r for r,_,__,___ in _matched_list)
+                    _ranks_muted = "、".join(r for r,_,__,___,____ in _matched_list)
                     st.warning(
                         f"🔕 **Telegram 已關閉**，訊息未發送。匹配條件：排名 {_ranks_muted}。",
                         icon="🔕",
                     )
                     # 即使關閉也標記為已處理，避免開啟後重複發送舊信號
-                    for _rank, _, _ci, _ in _matched_list:
+                    for _rank, _, _ci, _, _msigs in _matched_list:
                         # FIX BUG-11/12: 用條件內容 hash 作為去重 key
                         _row = _live_tg.iloc[_ci]
                         _cid = _build_cond_id(
@@ -2292,7 +2298,7 @@ for tab_idx, ticker in enumerate(selected_tickers):
                         )
                         _tg_mark_sent(_dedup_key_cond, _cid)
                 else:
-                    for _mn, (_rank, _wr, _ci, _dir) in enumerate(_matched_list, start=1):
+                    for _mn, (_rank, _wr, _ci, _dir, _msigs) in enumerate(_matched_list, start=1):
                         # FIX BUG-11/12: 用條件內容 hash 作為去重 key，而非排名
                         _row = _live_tg.iloc[_ci]
                         _cond_id = _build_cond_id(
@@ -2306,7 +2312,7 @@ for tab_idx, ticker in enumerate(selected_tickers):
                         _msg = _build_tg_msg(
                             rank=_rank, backtest_wr=_wr,
                             match_no=_mn, total_matches=_total_matched,
-                            direction=_dir,
+                            direction=_dir, matched_signals=_msigs,
                         )
                         _ok, _err = send_telegram_alert(_msg, ticker=ticker)
                         if _ok:
