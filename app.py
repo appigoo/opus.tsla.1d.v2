@@ -1541,7 +1541,7 @@ if selected_tickers:
             f"🟢 全部開啟",
             key="tg_all_on",
             use_container_width=True,
-            disabled=_all_on or _mute_on,  # 全域靜音時禁用
+            disabled=_all_on or _mute_on,
             help=f"將全部 {_n_all} 支股票的 Telegram 開啟",
         ):
             for _tk in selected_tickers:
@@ -1577,6 +1577,64 @@ if selected_tickers:
                 f"🔴 {', '.join(_off_names)}",
                 icon="ℹ️",
             )
+
+    # ── 3️⃣ 突破新高 / 跌破新低 總開關 ──────────────────────────────────
+    _bo_n_high = sum(1 for _tk in selected_tickers
+                     if st.session_state.get(f"bo_high_{_tk}", True))
+    _bo_n_low  = sum(1 for _tk in selected_tickers
+                     if st.session_state.get(f"bo_low_{_tk}", True))
+
+    _bo_col1, _bo_col2, _bo_col3, _bo_col4, _bo_info = st.columns([1, 1, 1, 1, 3])
+
+    with _bo_col1:
+        if st.button(
+            f"🚀 全部開啟新高",
+            key="bo_high_all_on",
+            use_container_width=True,
+            disabled=(_bo_n_high == _n_all),
+        ):
+            for _tk in selected_tickers:
+                st.session_state[f"bo_high_{_tk}"] = True
+            st.rerun()
+
+    with _bo_col2:
+        if st.button(
+            f"🚫 全部關閉新高",
+            key="bo_high_all_off",
+            use_container_width=True,
+            disabled=(_bo_n_high == 0),
+        ):
+            for _tk in selected_tickers:
+                st.session_state[f"bo_high_{_tk}"] = False
+            st.rerun()
+
+    with _bo_col3:
+        if st.button(
+            f"🔻 全部開啟新低",
+            key="bo_low_all_on",
+            use_container_width=True,
+            disabled=(_bo_n_low == _n_all),
+        ):
+            for _tk in selected_tickers:
+                st.session_state[f"bo_low_{_tk}"] = True
+            st.rerun()
+
+    with _bo_col4:
+        if st.button(
+            f"🚫 全部關閉新低",
+            key="bo_low_all_off",
+            use_container_width=True,
+            disabled=(_bo_n_low == 0),
+        ):
+            for _tk in selected_tickers:
+                st.session_state[f"bo_low_{_tk}"] = False
+            st.rerun()
+
+    with _bo_info:
+        st.caption(
+            f"🚀 突破新高：{_bo_n_high}/{_n_all} 開啟　｜　"
+            f"🔻 跌破新低：{_bo_n_low}/{_n_all} 開啟"
+        )
 
 # ── 一鍵全部股票回測 ─────────────────────────────────────────────────────────
 _AUTO_PERIOD_MAP = {
