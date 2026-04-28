@@ -1222,19 +1222,18 @@ ALL_SIGNAL_TYPES = sorted([
 ] + list(SELL_SIGNALS))
 
 # ── 每支股票預設條件表 ─────────────────────────────────────────────────────────
+# ── 每支股票預設條件表 ─────────────────────────────────────────────────────────
+# FIX: 預設為空表，而非預填做多信號。
+# 原因：Streamlit Cloud 重啟時 session_state/query_params/localStorage 可能全部丟失，
+#       如果 fallback 到有信號的預設表，會意外觸發 Telegram 推送。
+#       空表 = 不會匹配任何條件 = 安全。用戶需要先執行回測才能填入條件。
 _TG_DEFAULT = pd.DataFrame({
-    "排名":       ["1","2","3","4","5"],
-    "異動標記":   [
-        "📈 價格趨勢買入, 📈 持續跳空(上), 📈 SMA50上升趨勢, 📈 OBV突破買入",
-        "📈 Low>High, 📈 價格趨勢買入, 📈 SMA50上升趨勢",
-        "📈 連續向上買入, 📈 SMA50上升趨勢, 📈 EMA-SMA Uptrend Buy",
-        "📈 突破跳空(上), 📈 新买入信号, 📈 EMA-SMA Uptrend Buy",
-        "📈 EMA買入, 📈 連續向上買入, 📈 SMA50上升趨勢",
-    ],
-    "成交量標記": ["放量","縮量","放量","放量","縮量"],
-    "K線形態":    ["大陽線","普通K線","大陽線","射擊之星","看漲吞噬"],
-    "回測勝率":   ["N/A","N/A","N/A","N/A","N/A"],
-    "方向":       ["做多","做多","做多","做多","做多"],
+    "排名":       pd.Series(dtype="str"),
+    "異動標記":   pd.Series(dtype="str"),
+    "成交量標記": pd.Series(dtype="str"),
+    "K線形態":    pd.Series(dtype="str"),
+    "回測勝率":   pd.Series(dtype="str"),
+    "方向":       pd.Series(dtype="str"),
 })
 
 import zlib, base64
@@ -1855,6 +1854,14 @@ for tab_idx, ticker in enumerate(selected_tickers):
                     st.rerun()
 
         _tk_conds = _tg_editor(ticker)
+
+        # 條件表為空時提示用戶
+        if _tk_conds.empty or len(_tk_conds) == 0 or _tk_conds["異動標記"].str.strip().replace("", pd.NA).dropna().empty:
+            st.warning(
+                f"⚠️ **{ticker} 條件表為空**，不會觸發任何 Telegram 推送。\n\n"
+                "請先展開下方「🔬 回測分析」執行回測，再用「➕ 一鍵加入」或「🔀 合併」填入條件。",
+                icon="📋",
+            )
 
         try:
             # ── Fetch data ────────────────────────────────────────────────────
