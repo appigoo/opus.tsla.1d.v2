@@ -1837,6 +1837,23 @@ for tab_idx, ticker in enumerate(selected_tickers):
             key=f"selected_signals_{ticker}",
         )
 
+        # ── 突破新高/跌破新低 開關 ────────────────────────────────────────
+        _bo_col1, _bo_col2 = st.columns(2)
+        with _bo_col1:
+            _bo_high_on = st.checkbox(
+                "🚀 突破新高提醒",
+                value=st.session_state.get(f"bo_high_{ticker}", True),
+                key=f"bo_high_{ticker}",
+                help=f"當 {ticker} 股價創 MFI窗口 根K線新高時推送 Telegram",
+            )
+        with _bo_col2:
+            _bo_low_on = st.checkbox(
+                "🔻 跌破新低提醒",
+                value=st.session_state.get(f"bo_low_{ticker}", True),
+                key=f"bo_low_{ticker}",
+                help=f"當 {ticker} 股價創 MFI窗口 根K線新低時推送 Telegram",
+            )
+
         st.subheader(f"📋 {ticker} Telegram 觸發條件配置（可編輯）")
 
         if tab_idx > 0 and len(selected_tickers) > 1:
@@ -2341,10 +2358,11 @@ for tab_idx, ticker in enumerate(selected_tickers):
                         st.error(f"❌ **Telegram 全部發送失敗**：\n" + "\n".join(_send_err_msgs), icon="🚨")
                     # 如果 _send_ok_count == 0 且無 err（都已去重跳過），靜默不顯示
 
-            # ── Breakout / Breakdown alerts (with dedup) ──────────────────
+            # ── Breakout / Breakdown alerts (with dedup + toggle) ─────────
             _tg_on_bo = st.session_state.get(f"tg_enabled_{ticker}", True)
 
-            if pd.notna(data["High_Max"].iloc[-1]) and data["High"].iloc[-1] >= data["High_Max"].iloc[-1]:
+            if st.session_state.get(f"bo_high_{ticker}", True) and \
+               pd.notna(data["High_Max"].iloc[-1]) and data["High"].iloc[-1] >= data["High_Max"].iloc[-1]:
                 if not _tg_already_sent(_dedup_key_sig, "breakout_high"):
                     _bo_msg = (
                         f"🚀 突破新高提醒\n股票：{ticker} ({selected_interval})\n"
@@ -2359,7 +2377,8 @@ for tab_idx, ticker in enumerate(selected_tickers):
                     else:
                         _tg_mark_sent(_dedup_key_sig, "breakout_high")
 
-            if pd.notna(data["Low_Min"].iloc[-1]) and data["Low"].iloc[-1] <= data["Low_Min"].iloc[-1]:
+            if st.session_state.get(f"bo_low_{ticker}", True) and \
+               pd.notna(data["Low_Min"].iloc[-1]) and data["Low"].iloc[-1] <= data["Low_Min"].iloc[-1]:
                 if not _tg_already_sent(_dedup_key_sig, "breakdown_low"):
                     _bd_msg = (
                         f"🔻 跌破新低提醒\n股票：{ticker} ({selected_interval})\n"
