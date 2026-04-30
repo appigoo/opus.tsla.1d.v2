@@ -1159,7 +1159,7 @@ ALL_BT_INTERVALS = ["1m","5m","15m","30m","1h","1d","1wk","1mo"]
 with st.sidebar:
     st.header("⚙️ 參數設定")
     input_tickers     = st.text_input("股票代號（逗號分隔）",
-                                       "TSLA, UVXY, UVIX, NIO, TSLL, XPEV, GLD, META, GOOGL, AAPL, NVDA, AMZN, TSM, MSFT")
+                                       "TSLA, UVXY, UVIX, NIO, TSLL, XPEV, GLD, META, GOOGL, AAPL, NVDA, AMZN, TSM, MSFT, INTC, SNDK, AMD,PLTR, COIN")
     selected_period   = st.selectbox("時間範圍",
                                       ["1d","5d","1mo","3mo","6mo","1y","2y","5y","ytd","max"], index=5)
     selected_interval = st.selectbox("資料間隔",
